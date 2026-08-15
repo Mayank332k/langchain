@@ -4,6 +4,7 @@ const { getSystemPrompt } = require("../prompts/system");
 const { HumanMessage, AIMessage } = require("@langchain/core/messages");
 const config = require("../config/settings");
 const { allTools } = require("../tools");
+const { subscribeProgress } = require("../utils/tool_progress");
 
 // Ye service file agent ka logic aur animated status updates handle karti hai.
 
@@ -86,7 +87,15 @@ async function processUserQueryStream(input, onEvent, signal) {
   if (!agent) {
     initAgent();
   }
-  
+
+  const unsubscribeProgress = subscribeProgress((progress) => {
+    onEvent({
+      type: "tool_progress",
+      phase: progress.phase,
+      message: progress.message
+    });
+  });
+
   try {
     const inputMessage = new HumanMessage(input);
     // Only send the last 6 messages (3 turns) to save tokens/context length
@@ -96,10 +105,11 @@ async function processUserQueryStream(input, onEvent, signal) {
     // LangGraph streamEvents API v2 se real-time events stream karte hain
     const eventStream = agent.streamEvents(
       { messages: messages },
-      { version: "v2", recursionLimit: 15 }
+      { version: "v2", recursionLimit: 30 }
     );
 
     let fullAnswer = "";
+    let answerStarted = false;
 
     for await (const event of eventStream) {
       // Check if user pressed ESC
@@ -123,13 +133,7 @@ async function processUserQueryStream(input, onEvent, signal) {
         const inputArgs = event.data?.input || {};
 
         if (toolName === "web_search") {
-          const query = inputArgs.query || "web";
-          startStatusCycle(onEvent, [
-            `Sneaking web for "${query}"...`,
-            "Crawling search engines...",
-            "Accessing references...",
-            "Deep reading sites..."
-          ], 1500);
+          onEvent({ type: "status", message: `Searching web for "${inputArgs.query || "web"}"...` });
         } else if (toolName === "read_file") {
           const fp = inputArgs.filePath || "file";
           startStatusCycle(onEvent, [
@@ -187,9 +191,6 @@ async function processUserQueryStream(input, onEvent, signal) {
       }
       // Token-by-token final answer streaming
       else if (event.event === "on_chat_model_stream") {
-        // Clear active status timers as we are streaming tokens now
-        clearStatusCycle(onEvent);
-        
         if (event.data && event.data.chunk) {
           const chunk = event.data.chunk;
           const reasoning = chunk.additional_kwargs?.reasoning_content || chunk.response_metadata?.delta?.reasoning_content;
@@ -200,6 +201,11 @@ async function processUserQueryStream(input, onEvent, signal) {
 
           const content = chunk.content;
           if (typeof content === "string" && content.length > 0) {
+            // Keep the thinking animation during reasoning; stop it only when answer text starts.
+            if (!answerStarted) {
+              clearStatusCycle(onEvent);
+              answerStarted = true;
+            }
             fullAnswer += content;
             onEvent({ type: "token", token: content });
           }
@@ -222,6 +228,8 @@ async function processUserQueryStream(input, onEvent, signal) {
       onEvent({ type: "error", message: error.message || String(error) });
     }
     throw error;
+  } finally {
+    unsubscribeProgress();
   }
 }
 

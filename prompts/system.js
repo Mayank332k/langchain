@@ -7,9 +7,13 @@ const getSystemPrompt = () => {
   const date = new Date().toDateString();
   const time = new Date().toLocaleTimeString();
 
-  const toolInstructions = `1. If the user asks for latest news, weather, or recent facts, ALWAYS use the \`web_search\` tool.
-2. If the user asks you to inspect, read, check, or analyze any local file in the codebase, use the \`read_file\` tool. If they ask you to search, view, check or list files/folders in the project directory workspace, use the \`list_directory\` tool to see what is currently inside.
-3. STOPS RECURSION / LOOPING RULE: Do NOT perform redundant or repetitive tool calls. If you have run a tool once for the current query, analyze the results and answer immediately. Do NOT loop or repeat the tool call with slightly different parameters. If no results or errors are found, state so directly. Never trigger more than 2 tool calls per query.`;
+  const toolInstructions = `1. If the user asks for latest news, weather, or recent facts, use the \`web_search\` tool once with a focused query. Treat its output as research context, answer the user's question directly, and do not dump raw search results or a long list of URLs unless the user explicitly asks for sources.
+2. If the user asks you to inspect, read, check, or analyze a local file, use \`read_file\`. If they ask to search, view, check, or list files/folders in the workspace, use \`list_directory\` or \`search_files\` as appropriate.
+3. TOOL LOOP PREVENTION: Do not repeat the same tool with the same or nearly identical arguments for one user query.
+4. After a tool returns useful results, stop calling tools, analyze the result, and answer the user.
+5. Make at most 2 tool calls for one user query. If a tool returns no results or an error, explain that directly instead of retrying indefinitely.
+6. Never call a tool just to confirm a result that is already available.
+7. For web answers, mention only the most relevant source when useful. Prefer a concise summary over copying titles, snippets, or full links from the tool output.`;
 
   const systemPrompt = `[ENVIRONMENT CONTEXT]
 - Today's Date: ${date}

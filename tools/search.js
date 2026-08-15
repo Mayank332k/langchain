@@ -1,6 +1,7 @@
 const { DynamicStructuredTool } = require("@langchain/core/tools");
 const { z } = require("zod");
 const { performWebSearch } = require("../utils/search_engine");
+const { emitProgress } = require("../utils/tool_progress");
 
 /**
  * LangChain Web Search Tool wrapper.
@@ -14,17 +15,24 @@ const searchTool = new DynamicStructuredTool({
   }),
   func: async ({ query }) => {
     try {
-      const results = await performWebSearch(query, { deepScrape: true });
+      const results = await performWebSearch(query, {
+        deepScrape: true,
+        onProgress: emitProgress
+      });
       if (!results || results.length === 0) {
         return "No web results found.";
       }
-      return results.map(r => {
-        let text = `Title: ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`;
-        if (r.deepContent) {
-          text += `\nDeep Content:\n${r.deepContent}`;
-        }
-        return text;
-      }).join("\n\n---\n\n");
+      const relevantResults = results.slice(0, 5);
+      return [
+        "Web search context. Use this information to answer the user's question; do not dump this entire list unless the user asks for sources.",
+        ...relevantResults.map((r, index) => {
+          let text = `[${index + 1}] ${r.title}\nURL: ${r.url}\nSnippet: ${r.snippet}`;
+          if (r.deepContent) {
+            text += `\nRelevant content: ${r.deepContent.slice(0, 1200)}`;
+          }
+          return text;
+        })
+      ].join("\n\n---\n\n");
     } catch (err) {
       // Return error to bubble up to agent/UI
       return JSON.stringify({ error: `Search failed: ${err.message}` });

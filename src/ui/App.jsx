@@ -115,8 +115,9 @@ function App() {
 
         if (event.type === 'status') {
           setStatus(event.message);
+        } else if (event.type === 'tool_progress') {
+          setStatus(event.message);
         } else if (event.type === 'reasoning') {
-          setStatus('');
           reasoningBufferRef.current += event.token;
         } else if (event.type === 'token') {
           if (!isStreaming) {

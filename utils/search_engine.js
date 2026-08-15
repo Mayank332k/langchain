@@ -115,7 +115,8 @@ async function extractDeepPageContent(url) {
 }
 
 /**
- * Strategy 1: Library Scraper (duck-duck-scrape)
+ * Secondary strategy: Library Scraper (duck-duck-scrape).
+ * This depends on DuckDuckGo's internal VQD token flow and is less stable.
  */
 async function scrapeDuckDuckGoAPI(query) {
   const needleOpts = getNeedleOptions();
@@ -138,7 +139,8 @@ async function scrapeDuckDuckGoAPI(query) {
 }
 
 /**
- * Strategy 2: Direct HTML Scraper (Fallback)
+ * Primary strategy: Direct HTML Scraper.
+ * This endpoint does not require the library's internal VQD token flow.
  */
 async function scrapeDuckDuckGoHTML(query) {
   const ua = getRandomUserAgent();
@@ -203,36 +205,84 @@ async function scrapeDuckDuckGoHTML(query) {
 /**
  * Perform Web Text Search with optional Deep Article Content Extraction
  */
-async function performWebSearch(query, options = { deepScrape: true }) {
+async function performWebSearch(query, options = {}) {
   if (!query || typeof query !== 'string' || !query.trim()) {
     throw new Error('Search query must be a non-empty string');
   }
 
   const cleanQuery = query.trim();
+  const { deepScrape = true, onProgress } = options;
   let baseResults = [];
+  let secondaryAttempted = false;
 
+  onProgress?.({
+    phase: 'searching',
+    message: `Searching web for "${cleanQuery}"...`
+  });
+
+  // Prefer the direct HTML endpoint because the library scraper relies on
+  // DuckDuckGo's private VQD token format, which changes more often.
   try {
-    baseResults = await scrapeDuckDuckGoAPI(cleanQuery);
+    baseResults = await scrapeDuckDuckGoHTML(cleanQuery);
   } catch (primaryErr) {
-    // Fallback silently
+    onProgress?.({
+      phase: 'fallback',
+      message: 'Primary HTML search unavailable, trying secondary search...'
+    });
+
+    secondaryAttempted = true;
+    try {
+      baseResults = await scrapeDuckDuckGoAPI(cleanQuery);
+    } catch (secondaryErr) {
+      // Both search strategies failed; the empty-result state below handles it.
+    }
   }
 
-  if (!baseResults || baseResults.length === 0) {
+  // An empty HTML response is also treated as a primary failure so the
+  // secondary strategy still gets a chance to return results.
+  if ((!baseResults || baseResults.length === 0) && !secondaryAttempted) {
+    secondaryAttempted = true;
     try {
-      baseResults = await scrapeDuckDuckGoHTML(cleanQuery);
-    } catch (fallbackErr) {
-      // Fallback silently
+      baseResults = await scrapeDuckDuckGoAPI(cleanQuery);
+    } catch (secondaryErr) {
+      // Both search strategies failed; the empty-result state below handles it.
     }
   }
 
   if (!baseResults || baseResults.length === 0) {
+    onProgress?.({
+      phase: 'empty',
+      message: 'No web results found.'
+    });
     return [];
   }
 
+  onProgress?.({
+    phase: 'results',
+    message: `Search results found: ${baseResults.length}`
+  });
+
   // Deep Content Extraction for top 3 search results
-  if (options.deepScrape) {
+  if (deepScrape) {
     const topResults = baseResults.slice(0, 3);
-    const deepContents = await Promise.all(topResults.map(r => extractDeepPageContent(r.url)));
+    let completedSources = 0;
+
+    onProgress?.({
+      phase: 'reading',
+      message: `Reading ${topResults.length} relevant source${topResults.length === 1 ? '' : 's'}...`
+    });
+
+    const deepContents = await Promise.all(topResults.map(async (result) => {
+      const content = await extractDeepPageContent(result.url);
+      completedSources += 1;
+
+      onProgress?.({
+        phase: 'source_complete',
+        message: `Sources read: ${completedSources}/${topResults.length}`
+      });
+
+      return content;
+    }));
 
     deepContents.forEach((text, i) => {
       if (text) {
@@ -240,6 +290,11 @@ async function performWebSearch(query, options = { deepScrape: true }) {
       }
     });
   }
+
+  onProgress?.({
+    phase: 'complete',
+    message: 'Web research complete'
+  });
 
   return baseResults;
 }
