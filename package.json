@@ -1,0 +1,44 @@
+{
+  "name": "langchain-",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "kea": "./main.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@clack/prompts": "^1.7.0",
+    "@langchain/core": "^1.2.7",
+    "@langchain/langgraph": "^1.4.9",
+    "@langchain/openai": "^1.5.7",
+    "chalk": "^4.1.2",
+    "cli-highlight": "^2.1.11",
+    "cli-table3": "^0.6.5",
+    "cli-truncate": "^2.1.0",
+    "dotenv": "^17.4.2",
+    "duck-duck-scrape": "^2.2.7",
+    "duckduckgo-search": "^1.0.7",
+    "ink": "^3.2.0",
+    "ink-spinner": "^4.0.3",
+    "ink-text-input": "^4.0.3",
+    "langchain": "^1.5.8",
+    "ora": "^5.4.1",
+    "react": "^18.3.1",
+    "react-reconciler": "^0.29.0",
+    "string-width": "^4.2.3",
+    "wrap-ansi": "^7.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/register": "^7.29.7"
+  }
+}
