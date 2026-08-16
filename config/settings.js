@@ -10,7 +10,9 @@ const defaults = {
   modelName: "nvidia/nemotron-3-ultra-550b-a55b",
   nvidiaBaseUrl: "https://integrate.api.nvidia.com/v1",
   enableThinking: true,
-  showThinking: true
+  showThinking: false,
+  enableWebSearch: true,
+  advWebSearch: false
 };
 
 // Attempt to read saved settings from disk
@@ -32,6 +34,8 @@ const config = {
   modelName: savedSettings.modelName || defaults.modelName,
   enableThinking: savedSettings.enableThinking !== undefined ? savedSettings.enableThinking : defaults.enableThinking,
   showThinking: savedSettings.showThinking !== undefined ? savedSettings.showThinking : defaults.showThinking,
+  enableWebSearch: savedSettings.enableWebSearch !== undefined ? savedSettings.enableWebSearch : defaults.enableWebSearch,
+  advWebSearch: savedSettings.advWebSearch !== undefined ? savedSettings.advWebSearch : defaults.advWebSearch,
 
   // Method to serialize active settings to settings.json
   saveSettings() {
@@ -39,7 +43,9 @@ const config = {
       const dataToSave = {
         modelName: this.modelName,
         enableThinking: this.enableThinking,
-        showThinking: this.showThinking
+        showThinking: this.showThinking,
+        enableWebSearch: this.enableWebSearch,
+        advWebSearch: this.advWebSearch
       };
       fs.writeFileSync(settingsFilePath, JSON.stringify(dataToSave, null, 2), 'utf8');
     } catch (err) {

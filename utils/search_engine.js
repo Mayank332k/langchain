@@ -1,6 +1,6 @@
-const { search } = require("duck-duck-scrape");
+const { Readability } = require("@mozilla/readability");
+const { JSDOM, VirtualConsole } = require("jsdom");
 
-// Diverse Real-World User-Agents Pool (macOS, Windows, Linux, iOS, Android)
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
@@ -23,28 +23,6 @@ function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-function getNeedleOptions() {
-  const ua = getRandomUserAgent();
-  const isMobile = ua.includes('Mobile') || ua.includes('iPhone') || ua.includes('Android');
-
-  return {
-    headers: {
-      'User-Agent': ua,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Referer': 'https://duckduckgo.com/',
-      'sec-ch-ua-mobile': isMobile ? '?1' : '?0',
-      'sec-fetch-dest': 'document',
-      'sec-fetch-mode': 'navigate',
-      'sec-fetch-site': 'same-origin',
-      'sec-fetch-user': '?1'
-    },
-    follow_max: 5,
-    open_timeout: 10000,
-    read_timeout: 10000
-  };
-}
-
 function stripTags(str) {
   if (!str) return '';
   return str.replace(/<[^>]*>/g, '');
@@ -61,87 +39,6 @@ function cleanText(str) {
             .trim();
 }
 
-/**
- * Deep Web Scraping: Fetch target webpage and extract main article text
- */
-async function extractDeepPageContent(url) {
-  if (!url || typeof url !== 'string' || !url.startsWith('http')) return '';
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
-    });
-
-    clearTimeout(timer);
-
-    if (!response.ok) return '';
-
-    const html = await response.text();
-
-    const cleanHtml = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<header[\s\S]*?<\/header>/gi, '')
-      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-      .replace(/<aside[\s\S]*?<\/aside>/gi, '')
-      .replace(/<form[\s\S]*?<\/form>/gi, '')
-      .replace(/<!--[\s\S]*?-->/gi, '');
-
-    // Extract <p>, <li>, <h2>, <h3> tags for richer content
-    const paragraphs = [];
-    const contentRegex = /<(?:p|li|h[2-3])[^>]*>([\s\S]*?)<\/(?:p|li|h[2-3])>/gi;
-    let match;
-
-    while ((match = contentRegex.exec(cleanHtml)) !== null && paragraphs.length < 12) {
-      const text = cleanText(stripTags(match[1]));
-      if (text.length > 40) {
-        paragraphs.push(text);
-      }
-    }
-
-    const fullText = paragraphs.join('\n');
-    return fullText;
-  } catch (err) {
-    return '';
-  }
-}
-
-/**
- * Secondary strategy: Library Scraper (duck-duck-scrape).
- * This depends on DuckDuckGo's internal VQD token flow and is less stable.
- */
-async function scrapeDuckDuckGoAPI(query) {
-  const needleOpts = getNeedleOptions();
-  const searchOptions = {
-    time: 'w', // 'w' for week
-    region: 'in-en' // India (English)
-  };
-  const searchResults = await search(query, searchOptions, needleOpts);
-
-  if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
-    return [];
-  }
-
-  return searchResults.results.map((item, index) => ({
-    id: index + 1,
-    title: cleanText(item.title || 'No Title'),
-    url: item.url || item.rawUrl || '#',
-    snippet: cleanText(item.snippet || item.description || '')
-  }));
-}
-
-/**
- * Primary strategy: Direct HTML Scraper.
- * This endpoint does not require the library's internal VQD token flow.
- */
 async function scrapeDuckDuckGoHTML(query) {
   const ua = getRandomUserAgent();
   const response = await fetch('https://html.duckduckgo.com/html/', {
@@ -154,7 +51,7 @@ async function scrapeDuckDuckGoHTML(query) {
       'Origin': 'https://html.duckduckgo.com',
       'Referer': 'https://html.duckduckgo.com/'
     },
-    body: `q=${encodeURIComponent(query)}&kl=in-en&df=w`
+    body: `q=${encodeURIComponent(query)}&kl=in-en`
   });
 
   if (!response.ok) {
@@ -202,9 +99,41 @@ async function scrapeDuckDuckGoHTML(query) {
   return results;
 }
 
-/**
- * Perform Web Text Search with optional Deep Article Content Extraction
- */
+async function extractDeepPageContent(url) {
+  if (!url || typeof url !== 'string' || !url.startsWith('http')) return '';
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    });
+
+    clearTimeout(timer);
+
+    if (!response.ok) return '';
+
+    const html = await response.text();
+    const virtualConsole = new VirtualConsole();
+    const dom = new JSDOM(html, { url, virtualConsole });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+
+    if (article && article.textContent) {
+      return article.textContent.replace(/\s+/g, ' ').trim();
+    }
+    
+    return '';
+  } catch (err) {
+    return '';
+  }
+}
+
 async function performWebSearch(query, options = {}) {
   if (!query || typeof query !== 'string' || !query.trim()) {
     throw new Error('Search query must be a non-empty string');
@@ -213,40 +142,16 @@ async function performWebSearch(query, options = {}) {
   const cleanQuery = query.trim();
   const { deepScrape = true, onProgress } = options;
   let baseResults = [];
-  let secondaryAttempted = false;
 
   onProgress?.({
     phase: 'searching',
     message: `Searching web for "${cleanQuery}"...`
   });
 
-  // Prefer the direct HTML endpoint because the library scraper relies on
-  // DuckDuckGo's private VQD token format, which changes more often.
   try {
     baseResults = await scrapeDuckDuckGoHTML(cleanQuery);
-  } catch (primaryErr) {
-    onProgress?.({
-      phase: 'fallback',
-      message: 'Primary HTML search unavailable, trying secondary search...'
-    });
-
-    secondaryAttempted = true;
-    try {
-      baseResults = await scrapeDuckDuckGoAPI(cleanQuery);
-    } catch (secondaryErr) {
-      // Both search strategies failed; the empty-result state below handles it.
-    }
-  }
-
-  // An empty HTML response is also treated as a primary failure so the
-  // secondary strategy still gets a chance to return results.
-  if ((!baseResults || baseResults.length === 0) && !secondaryAttempted) {
-    secondaryAttempted = true;
-    try {
-      baseResults = await scrapeDuckDuckGoAPI(cleanQuery);
-    } catch (secondaryErr) {
-      // Both search strategies failed; the empty-result state below handles it.
-    }
+  } catch (err) {
+    // HTML search failed
   }
 
   if (!baseResults || baseResults.length === 0) {
@@ -262,9 +167,8 @@ async function performWebSearch(query, options = {}) {
     message: `Search results found: ${baseResults.length}`
   });
 
-  // Deep Content Extraction for top 3 search results
   if (deepScrape) {
-    const topResults = baseResults.slice(0, 3);
+    const topResults = baseResults.slice(0, 5);
     let completedSources = 0;
 
     onProgress?.({

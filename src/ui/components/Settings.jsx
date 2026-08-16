@@ -44,55 +44,63 @@ function Settings({ onClose }) {
   const [thinking, setThinking] = React.useState(currentSettings.thinking);
   const [showThinkingSetting, setShowThinkingSetting] = React.useState(currentSettings.showThinking);
   const [model, setModel] = React.useState(currentSettings.model);
+  const [enableWebSearch, setEnableWebSearch] = React.useState(currentSettings.enableWebSearch !== false);
+  const [advWebSearch, setAdvWebSearch] = React.useState(currentSettings.advWebSearch === true);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [activePane, setActivePane] = React.useState('main');
   const [modelIndex, setModelIndex] = React.useState(findModelIndex(currentSettings.model));
 
-  const mainItemsCount = 4;
+  const mainItemsCount = 6;
 
   React.useEffect(() => {
     setModelIndex(findModelIndex(model));
   }, [model]);
 
+  const getPayload = (overrides) => ({
+    thinking,
+    showThinking: showThinkingSetting,
+    model,
+    enableWebSearch,
+    advWebSearch,
+    ...overrides
+  });
+
   const commitModel = (nextModel) => {
     setModel(nextModel);
-    updateAgentSettings({
-      thinking,
-      showThinking: showThinkingSetting,
-      model: nextModel
-    });
+    updateAgentSettings(getPayload({ model: nextModel }));
   };
 
   const handleMainSelect = () => {
     if (selectedIndex === 0) {
       const nextThinking = !thinking;
       setThinking(nextThinking);
-      updateAgentSettings({
-        thinking: nextThinking,
-        showThinking: showThinkingSetting,
-        model
-      });
+      updateAgentSettings(getPayload({ thinking: nextThinking }));
       return;
     }
-
     if (selectedIndex === 1) {
       const nextShowThinking = !showThinkingSetting;
       setShowThinkingSetting(nextShowThinking);
-      updateAgentSettings({
-        thinking,
-        showThinking: nextShowThinking,
-        model
-      });
+      updateAgentSettings(getPayload({ showThinking: nextShowThinking }));
       return;
     }
-
     if (selectedIndex === 2) {
+      const nextEws = !enableWebSearch;
+      setEnableWebSearch(nextEws);
+      updateAgentSettings(getPayload({ enableWebSearch: nextEws }));
+      return;
+    }
+    if (selectedIndex === 3) {
+      const nextAws = !advWebSearch;
+      setAdvWebSearch(nextAws);
+      updateAgentSettings(getPayload({ advWebSearch: nextAws }));
+      return;
+    }
+    if (selectedIndex === 4) {
       setActivePane('model');
       setModelIndex(findModelIndex(model));
       return;
     }
-
-    if (selectedIndex === 3) {
+    if (selectedIndex === 5) {
       onClose();
     }
   };
@@ -161,6 +169,30 @@ function Settings({ onClose }) {
       <Box flexDirection="row" marginTop={1}>
         <Text color={selectedIndex === 2 ? theme.colors.primary : undefined}>
           {selectedIndex === 2 ? '❯ ' : '  '}
+          Web Search:
+        </Text>
+        <Text bold color={enableWebSearch ? 'green' : 'red'}>
+          {' '}
+          [{enableWebSearch ? 'ON' : 'OFF'}]
+        </Text>
+        <Text dimColor> (Space/Enter)</Text>
+      </Box>
+
+      <Box flexDirection="row" marginTop={1}>
+        <Text color={selectedIndex === 3 ? theme.colors.primary : undefined}>
+          {selectedIndex === 3 ? '❯ ' : '  '}
+          Advanced Web Search (Tavily):
+        </Text>
+        <Text bold color={advWebSearch ? 'green' : 'red'}>
+          {' '}
+          [{advWebSearch ? 'ON' : 'OFF'}]
+        </Text>
+        <Text dimColor> (Space/Enter)</Text>
+      </Box>
+
+      <Box flexDirection="row" marginTop={1}>
+        <Text color={selectedIndex === 4 ? theme.colors.primary : undefined}>
+          {selectedIndex === 4 ? '❯ ' : '  '}
           Model:
         </Text>
         <Text bold color="cyan">
@@ -171,8 +203,8 @@ function Settings({ onClose }) {
       </Box>
 
       <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 3 ? theme.colors.primary : undefined}>
-          {selectedIndex === 3 ? '❯ ' : '  '}
+        <Text color={selectedIndex === 5 ? theme.colors.primary : undefined}>
+          {selectedIndex === 5 ? '❯ ' : '  '}
           Exit and Save Settings
         </Text>
       </Box>

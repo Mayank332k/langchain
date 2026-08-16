@@ -38,6 +38,9 @@ function Header() {
 
   const modelShort = config.modelName.length > 30 ? config.modelName.split('/').pop().toUpperCase() : config.modelName.toUpperCase();
   const thinkingStatus = config.enableThinking ? "ON" : "OFF";
+  const cwd = process.cwd();
+  const homeDir = process.env.HOME || require('os').homedir();
+  const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.colors.primary} width={cols}>
@@ -60,7 +63,7 @@ function Header() {
           </Box>
           <Box flexDirection="column" alignItems="center" marginTop={1}>
             <Text dimColor bold>MODEL: {modelShort} · THINKING: {thinkingStatus}</Text>
-            <Text dimColor>~/Desktop/langchain</Text>
+            <Text dimColor>{displayPath}</Text>
           </Box>
         </Box>
 

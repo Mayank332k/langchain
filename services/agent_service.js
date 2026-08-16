@@ -44,7 +44,9 @@ function getAgentSettings() {
   return {
     model: config.modelName,
     thinking: config.enableThinking,
-    showThinking: config.showThinking
+    showThinking: config.showThinking,
+    enableWebSearch: config.enableWebSearch,
+    advWebSearch: config.advWebSearch
   };
 }
 
@@ -57,6 +59,12 @@ function updateAgentSettings(newSettings) {
   }
   if (newSettings.showThinking !== undefined) {
     config.showThinking = newSettings.showThinking;
+  }
+  if (newSettings.enableWebSearch !== undefined) {
+    config.enableWebSearch = newSettings.enableWebSearch;
+  }
+  if (newSettings.advWebSearch !== undefined) {
+    config.advWebSearch = newSettings.advWebSearch;
   }
   
   // Persist settings to disk
@@ -233,8 +241,13 @@ async function processUserQueryStream(input, onEvent, signal) {
   }
 }
 
+function clearAgentHistory() {
+  chatHistory = [];
+}
+
 module.exports = {
   processUserQueryStream,
   getAgentSettings,
-  updateAgentSettings
+  updateAgentSettings,
+  clearAgentHistory
 };

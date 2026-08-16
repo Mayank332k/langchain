@@ -31,3 +31,8 @@ lerna-debug.log*
 *.sln
 *.sw?
 context.md
+
+# Debug and Test Scripts
+test_search.js
+ddg_debug.html
+tempCodeRunnerFile.js

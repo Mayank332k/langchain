@@ -6,17 +6,20 @@ const MarkdownRenderer = require('./MarkdownRenderer');
 function Message({ role, content, reasoning, showThinking }) {
   const isUser = role === 'user';
   const isError = role === 'error';
+  const isSystem = role === 'system';
+
+  const textColor = isError || isSystem ? theme.colors.error : 'white';
 
   return (
     <Box flexDirection="column" marginY={0} width="100%">
       {!isUser ? (
         <Box flexDirection="column" marginY={0}>
           <Box flexDirection="row">
-            <Text bold color={isError ? theme.colors.error : 'white'}>
+            <Text bold color={textColor}>
               {isError ? '🔥 ' : '● '}
             </Text>
             <Box flexGrow={1} flexShrink={1}>
-              <MarkdownRenderer content={content} textColor={isError ? theme.colors.error : 'white'} />
+              <MarkdownRenderer content={content} textColor={textColor} />
             </Box>
           </Box>
           {reasoning !== '' && showThinking !== false && (

@@ -10,7 +10,7 @@ const Settings = require('./components/Settings');
 const useTerminalSize = require('./hooks/useTerminalSize');
 
 // We need to require this dynamically or pass it as prop, but requiring directly works in node
-const { processUserQueryStream, getAgentSettings } = require('../../services/agent_service');
+const { processUserQueryStream, getAgentSettings, clearAgentHistory } = require('../../services/agent_service');
 
 function App() {
   const { exit } = useApp();
@@ -74,6 +74,17 @@ function App() {
 
     if (lowerQuery === '/setting' || lowerQuery === '/settings' || lowerQuery === 'settings' || lowerQuery === 'setting') {
       setView('settings');
+      return;
+    }
+
+    if (lowerQuery === '/clear') {
+      setMessages([{ role: 'header' }]);
+      return;
+    }
+
+    if (lowerQuery === '/rc') {
+      clearAgentHistory();
+      setMessages((prev) => [...prev, { role: 'system', content: 'Context has been cleared.' }]);
       return;
     }
 
