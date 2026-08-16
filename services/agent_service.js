@@ -97,6 +97,7 @@ async function processUserQueryStream(input, onEvent, signal) {
   }
 
   const unsubscribeProgress = subscribeProgress((progress) => {
+    clearStatusCycle();
     onEvent({
       type: "tool_progress",
       phase: progress.phase,
@@ -141,27 +142,29 @@ async function processUserQueryStream(input, onEvent, signal) {
         const inputArgs = event.data?.input || {};
 
         if (toolName === "web_search") {
+          clearStatusCycle();
           onEvent({ type: "status", message: `Searching web for "${inputArgs.query || "web"}"...` });
         } else if (toolName === "read_file") {
           const fp = inputArgs.filePath || "file";
-          startStatusCycle(onEvent, [
-            `Reading ${fp}...`,
-            "Checking boundaries...",
-            "Parsing file contents..."
-          ], 1000);
+          clearStatusCycle();
+          onEvent({ type: "status", message: `Reading ${fp}...` });
+        } else if (toolName === "read_multiple_files") {
+          clearStatusCycle();
+          const count = inputArgs.filePaths?.length || 0;
+          onEvent({ type: "status", message: `Reading ${count} files...` });
         } else if (toolName === "list_directory") {
           const dp = inputArgs.dirPath || "root directory";
           startStatusCycle(onEvent, [
             `Listing ${dp}...`,
-            "Scanning file structures...",
-            "Filtering system folders..."
+            `Scanning files in ${dp}...`,
+            `Filtering system folders in ${dp}...`
           ], 1000);
         } else if (toolName === "search_files") {
           const q = inputArgs.query || "files";
           startStatusCycle(onEvent, [
             `Searching codebase for "${q}"...`,
-            "Scanning file system...",
-            "Filtering matching text..."
+            `Scanning file system for "${q}"...`,
+            `Filtering text matches for "${q}"...`
           ], 1000);
         } else {
           startStatusCycle(onEvent, [
@@ -209,13 +212,18 @@ async function processUserQueryStream(input, onEvent, signal) {
 
           const content = chunk.content;
           if (typeof content === "string" && content.length > 0) {
-            // Keep the thinking animation during reasoning; stop it only when answer text starts.
             if (!answerStarted) {
-              clearStatusCycle(onEvent);
-              answerStarted = true;
+              const trimmed = content.trimStart();
+              if (trimmed.length > 0) {
+                clearStatusCycle(onEvent);
+                answerStarted = true;
+                fullAnswer += trimmed;
+                onEvent({ type: "token", token: trimmed });
+              }
+            } else {
+              fullAnswer += content;
+              onEvent({ type: "token", token: content });
             }
-            fullAnswer += content;
-            onEvent({ type: "token", token: content });
           }
         }
       }

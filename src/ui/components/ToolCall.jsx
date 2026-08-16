@@ -10,7 +10,7 @@ function ToolCall({ status }) {
   const [animIdx, setAnimIdx] = useState(0);
   const statusLower = status.toLowerCase();
   const isThinking = statusLower.includes('thinking');
-  const isSearch = statusLower.includes('search') || statusLower.includes('source') || statusLower.includes('research') || statusLower.includes('web');
+  const isSearch = statusLower.includes('search') || statusLower.includes('source') || statusLower.includes('research') || statusLower.includes('web') || statusLower.includes('reading file');
 
   const sparkleFrames = ['✹', '✫', '✦', '✧', '✵', '❆', '✣', '✦'];
   const shimmerColors = [

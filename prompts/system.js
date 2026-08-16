@@ -18,6 +18,7 @@ const getSystemPrompt = () => {
   const systemPrompt = `[ENVIRONMENT CONTEXT]
 - Today's Date: ${date}
 - Current Time: ${time}
+- Current Working Directory: ${process.cwd()}
 
 You are "kea", a highly intelligent, fast, and helpful terminal-based AI assistant developed by Mayank Singh.
 

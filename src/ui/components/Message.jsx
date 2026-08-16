@@ -14,19 +14,19 @@ function Message({ role, content, reasoning, showThinking }) {
     <Box flexDirection="column" marginY={0} width="100%">
       {!isUser ? (
         <Box flexDirection="column" marginY={0}>
-          <Box flexDirection="row">
+          <Box marginBottom={1}>
             <Text bold color={textColor}>
-              {isError ? '🔥 ' : '● '}
+              {isError ? '🔥 Error' : '● Kea'}
             </Text>
-            <Box flexGrow={1} flexShrink={1}>
-              <MarkdownRenderer content={content} textColor={textColor} />
-            </Box>
           </Box>
-          {reasoning !== '' && showThinking !== false && (
-            <Box paddingLeft={0} marginTop={1}>
-              <Text dimColor>* {reasoning}</Text>
+          {!!reasoning && showThinking !== false && (
+            <Box paddingLeft={2} marginBottom={1}>
+              <Text dimColor italic>💭 {reasoning}</Text>
             </Box>
           )}
+          <Box paddingLeft={2} flexDirection="column">
+            <MarkdownRenderer content={content} textColor={textColor} />
+          </Box>
         </Box>
       ) : (
         <Box 

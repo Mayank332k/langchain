@@ -178,7 +178,7 @@ function App() {
         ) : (
           <>
             <Chat messages={messages} showThinking={getAgentSettings().showThinking} />
-            {reasoningContent !== '' && getAgentSettings().showThinking !== false && (
+            {!!reasoningContent && getAgentSettings().showThinking !== false && (
               <Box flexDirection="column" marginY={1}>
                 <Text dimColor bold>💭 Thinking Process:</Text>
                 <Box paddingLeft={2}>

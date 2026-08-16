@@ -7,20 +7,13 @@ const MODEL_GROUPS = [
   {
     label: 'gpt',
     models: [
-      { label: 'gpt-oss-20b', value: 'openai/gpt-oss-20b' }
+      { label: 'gpt-oss-20b', value: 'openai/gpt-oss-20b' },
     ]
   },
   {
-    label: 'nemotron',
+    label: 'stepfun',
     models: [
-      { label: 'nemotron-3-ultra-550b-a55b', value: 'nvidia/nemotron-3-ultra-550b-a55b' }
-    ]
-  },
-  {
-    label: 'others',
-    models: [
-      { label: 'minimax-m3', value: 'minimaxai/minimax-m3' },
-      { label: 'mistral-nemotron', value: 'mistralai/mistral-nemotron' }
+      { label: 'step-3.7-flash', value: 'stepfun-ai/step-3.7-flash' }
     ]
   }
 ];

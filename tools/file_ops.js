@@ -5,13 +5,15 @@ const path = require("path");
 
 /**
  * Tool to read the contents of a local file in the workspace.
- * Resolves the path relative to the process directory and enforces boundaries.
  */
 const readFileTool = new DynamicStructuredTool({
   name: "read_file",
-  description: "Use this tool to read the text contents of a local file in the workspace directory. You must supply a valid relative file path..",
+  description:
+    "Use this tool to read the text contents of a local file anywhere on the system. You can supply an absolute path or a relative path.",
   schema: z.object({
-    filePath: z.string().describe("The relative path of the file to read from the project root.")
+    filePath: z
+      .string()
+      .describe("The absolute or relative path of the file to read."),
   }),
   func: async ({ filePath }) => {
     try {
@@ -19,16 +21,12 @@ const readFileTool = new DynamicStructuredTool({
         return "Error: No file path provided.";
       }
 
-      // Resolve the absolute path
       const absolutePath = path.resolve(process.cwd(), filePath);
 
-      // Security boundary check: Ensure the path is within the workspace
-      if (!absolutePath.startsWith(process.cwd())) {
-        return "Error: Access denied. You can only read files inside the project workspace directory.";
-      }
 
-      // Read file contents
       const content = await fs.readFile(absolutePath, "utf-8");
+
+
       return content;
     } catch (err) {
       if (err.code === "ENOENT") {
@@ -36,7 +34,49 @@ const readFileTool = new DynamicStructuredTool({
       }
       return `Error reading file: ${err.message}`;
     }
-  }
+  },
+});
+
+/**
+ * Tool to read multiple files at once. Useful for understanding a codebase.
+ */
+const readMultipleFilesTool = new DynamicStructuredTool({
+  name: "read_multiple_files",
+  description:
+    "Use this tool to read multiple files at once. You can supply absolute or relative paths anywhere on the system. Max 8 files per call.",
+  schema: z.object({
+    filePaths: z
+      .array(z.string())
+      .describe("Array of file paths to read (max 8)."),
+  }),
+  func: async ({ filePaths }) => {
+    if (!filePaths || filePaths.length === 0) {
+      return "Error: No file paths provided.";
+    }
+
+    const paths = filePaths.slice(0, 8);
+    const results = [];
+
+    for (let i = 0; i < paths.length; i++) {
+      const filePath = paths[i];
+      const absolutePath = path.resolve(process.cwd(), filePath);
+
+
+      try {
+        const content = await fs.readFile(absolutePath, "utf-8");
+        results.push(
+          `================ FILE: ${filePath} ================\n${content}`,
+        );
+      } catch (err) {
+        results.push(
+          `================ FILE: ${filePath} ================\nError: ${err.code === "ENOENT" ? "File not found" : err.message}`,
+        );
+      }
+    }
+
+
+    return results.join("\n\n");
+  },
 });
 
 /**
@@ -45,18 +85,19 @@ const readFileTool = new DynamicStructuredTool({
  */
 const listDirTool = new DynamicStructuredTool({
   name: "list_directory",
-  description: "Use this tool to list files and folders inside a given directory in the project workspace directory. Ignores system files and node_modules.",
+  description:
+    "Use this tool to list files and folders inside a given directory anywhere on the system. Ignores system files and node_modules.",
   schema: z.object({
-    dirPath: z.string().optional().describe("The relative path of the directory to list (e.g. 'src', 'src/ui'). ALWAYS relative to project root. To 'go back' or list root, use '.'.")
+    dirPath: z
+      .string()
+      .optional()
+      .describe(
+        "The absolute or relative path of the directory to list. Defaults to '.'.",
+      ),
   }),
   func: async ({ dirPath = "." }) => {
     try {
       const resolvedPath = path.resolve(process.cwd(), dirPath);
-
-      // Security boundary check: Ensure the path is within the workspace
-      if (!resolvedPath.startsWith(process.cwd())) {
-        return "Error: Access denied. You can only list directories inside the project workspace directory.";
-      }
 
       const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
       if (entries.length === 0) {
@@ -64,23 +105,27 @@ const listDirTool = new DynamicStructuredTool({
       }
 
       const list = entries
-        .filter(entry => entry.name !== "node_modules" && entry.name !== ".git")
-        .map(entry => {
+        .filter(
+          (entry) => entry.name !== "node_modules" && entry.name !== ".git",
+        )
+        .map((entry) => {
           const type = entry.isDirectory() ? "[DIR]" : "[FILE]";
           return `${type} ${entry.name}`;
         })
         .join("\n");
 
-      return list || "No files or folders found (ignored node_modules/.git directories).";
+      return (
+        list ||
+        "No files or folders found (ignored node_modules/.git directories)."
+      );
     } catch (err) {
       if (err.code === "ENOENT") {
         return `Error: Directory not found at path "${dirPath}". Please check the path.`;
       }
       return `Error listing directory: ${err.message}`;
     }
-  }
+  },
 });
-
 
 const { exec } = require("child_process");
 const util = require("util");
@@ -91,10 +136,13 @@ const execPromise = util.promisify(exec);
  */
 const searchFilesTool = new DynamicStructuredTool({
   name: "search_files",
-  description: "Use this tool to search for files by name or search for text content inside files across the project. Use this when the user asks to find where something is defined or where a file is.",
+  description:
+    "Use this tool to search for files by name or search for text content inside files across the project. Use this when the user asks to find where something is defined or where a file is.",
   schema: z.object({
     query: z.string().describe("The text or file name to search for."),
-    searchType: z.enum(["name", "content"]).describe("Whether to search by file 'name' or file 'content'.")
+    searchType: z
+      .enum(["name", "content"])
+      .describe("Whether to search by file 'name' or file 'content'."),
   }),
   func: async ({ query, searchType }) => {
     try {
@@ -105,23 +153,27 @@ const searchFilesTool = new DynamicStructuredTool({
       } else {
         command = `grep -riI "${query}" . --exclude-dir=node_modules --exclude-dir=.git | head -n 20`;
       }
-      
-      const { stdout, stderr } = await execPromise(command, { cwd: process.cwd() });
+
+      const { stdout, stderr } = await execPromise(command, {
+        cwd: process.cwd(),
+      });
       if (stdout.trim().length === 0) {
         return `No results found for "${query}".`;
       }
       return stdout.trim();
     } catch (err) {
-      if (err.code === 1) { // grep returns 1 if no matches
-         return `No results found for "${query}".`;
+      if (err.code === 1) {
+        // grep returns 1 if no matches
+        return `No results found for "${query}".`;
       }
       return `Error executing search: ${err.message}`;
     }
-  }
+  },
 });
 
 module.exports = {
   readFileTool,
+  readMultipleFilesTool,
   listDirTool,
-  searchFilesTool
+  searchFilesTool,
 };
