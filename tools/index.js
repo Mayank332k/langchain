@@ -1,5 +1,6 @@
 const { searchTool } = require('./search');
 const { readFileTool, readMultipleFilesTool, listDirTool, searchFilesTool } = require('./file_ops');
+const { instructionManualTool } = require('./meta');
 
 // Central registry for all active tools in the application.
 // Future tools (like terminal execution, file writing) can be imported 
@@ -9,7 +10,8 @@ const allTools = [
   readFileTool,
   readMultipleFilesTool,
   listDirTool,
-  searchFilesTool
+  searchFilesTool,
+  instructionManualTool
 ];
 
 module.exports = {
@@ -18,5 +20,6 @@ module.exports = {
   readFileTool,
   readMultipleFilesTool,
   listDirTool,
-  searchFilesTool
+  searchFilesTool,
+  instructionManualTool
 };

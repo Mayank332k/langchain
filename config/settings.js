@@ -12,7 +12,8 @@ const defaults = {
   enableThinking: true,
   showThinking: false,
   enableWebSearch: true,
-  advWebSearch: false
+  advWebSearch: false,
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN
 };
 
 // Attempt to read saved settings from disk
@@ -36,6 +37,7 @@ const config = {
   showThinking: savedSettings.showThinking !== undefined ? savedSettings.showThinking : defaults.showThinking,
   enableWebSearch: savedSettings.enableWebSearch !== undefined ? savedSettings.enableWebSearch : defaults.enableWebSearch,
   advWebSearch: savedSettings.advWebSearch !== undefined ? savedSettings.advWebSearch : defaults.advWebSearch,
+  telegramBotToken: defaults.telegramBotToken,
 
   // Method to serialize active settings to settings.json
   saveSettings() {

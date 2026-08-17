@@ -5,6 +5,7 @@ const { HumanMessage, AIMessage } = require("@langchain/core/messages");
 const config = require("../config/settings");
 const { allTools } = require("../tools");
 const { subscribeProgress } = require("../utils/tool_progress");
+const memoryService = require("./memory_service");
 
 // Ye service file agent ka logic aur animated status updates handle karti hai.
 
@@ -81,8 +82,7 @@ function initAgent() {
   // Agent banate hain jo tools call kar sakta hai
   agent = createReactAgent({
     llm,
-    tools,
-    messageModifier: getSystemPrompt()
+    tools
   });
 }
 
@@ -107,14 +107,17 @@ async function processUserQueryStream(input, onEvent, signal) {
 
   try {
     const inputMessage = new HumanMessage(input);
-    // Only send the last 6 messages (3 turns) to save tokens/context length
-    const recentHistory = chatHistory.slice(-6);
-    const messages = [...recentHistory, inputMessage];
+    const recentHistory = chatHistory; // Now fully managed by memoryService
+    
+    const memoryContext = await memoryService.loadMemory();
+    const systemMessage = getSystemPrompt(memoryContext);
+    
+    const messages = [systemMessage, ...recentHistory, inputMessage];
     
     // LangGraph streamEvents API v2 se real-time events stream karte hain
     const eventStream = agent.streamEvents(
       { messages: messages },
-      { version: "v2", recursionLimit: 30 }
+      { version: "v2", recursionLimit: 30, signal: signal }
     );
 
     let fullAnswer = "";
@@ -236,6 +239,9 @@ async function processUserQueryStream(input, onEvent, signal) {
     if (fullAnswer) {
       chatHistory.push(new AIMessage(fullAnswer));
     }
+    
+    // Check and trigger rolling memory if limit exceeded
+    chatHistory = memoryService.manageMemory(chatHistory);
     
     return fullAnswer;
   } catch (error) {

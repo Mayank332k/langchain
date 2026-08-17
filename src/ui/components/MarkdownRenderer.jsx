@@ -137,12 +137,8 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
         );
       }
     } else {
-      // Add empty space for newline spacing with a safe Text child
-      renderedElements.push(
-        <Box key={i} height={1}>
-          <Text> </Text>
-        </Box>
-      );
+      // Skip empty lines to prevent large gaps in terminal output
+      continue;
     }
   }
 

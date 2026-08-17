@@ -14,18 +14,41 @@ const readFileTool = new DynamicStructuredTool({
     filePath: z
       .string()
       .describe("The absolute or relative path of the file to read."),
+    offset: z
+      .number()
+      .optional()
+      .describe("Optional character offset to start reading from. Use this to read files in chunks if they are too large."),
+    limit: z
+      .number()
+      .optional()
+      .describe("Optional max number of characters to read. Defaults to 20000.")
   }),
-  func: async ({ filePath }) => {
+  func: async ({ filePath, offset = 0, limit = 20000 }) => {
     try {
       if (!filePath) {
         return "Error: No file path provided.";
       }
 
       const absolutePath = path.resolve(process.cwd(), filePath);
+      const ext = path.extname(absolutePath).toLowerCase();
 
+      let content = "";
+      if (ext === '.pdf') {
+        const pdfParse = require('pdf-parse');
+        const dataBuffer = await fs.readFile(absolutePath);
+        const data = await pdfParse(dataBuffer);
+        content = data.text;
+      } else {
+        content = await fs.readFile(absolutePath, "utf-8");
+      }
 
-      const content = await fs.readFile(absolutePath, "utf-8");
-
+      if (offset > 0 || content.length > limit) {
+        const sliced = content.slice(offset, offset + limit);
+        if (offset + limit < content.length) {
+          return sliced + `\n\n... [TRUNCATED] File is too large (${content.length} chars). Call read_file again with offset=${offset + limit} to read the next part.`;
+        }
+        return sliced;
+      }
 
       return content;
     } catch (err) {
@@ -63,7 +86,20 @@ const readMultipleFilesTool = new DynamicStructuredTool({
 
 
       try {
-        const content = await fs.readFile(absolutePath, "utf-8");
+        const ext = path.extname(absolutePath).toLowerCase();
+        let content = "";
+        if (ext === '.pdf') {
+          const pdfParse = require('pdf-parse');
+          const dataBuffer = await fs.readFile(absolutePath);
+          const data = await pdfParse(dataBuffer);
+          content = data.text;
+        } else {
+          content = await fs.readFile(absolutePath, "utf-8");
+        }
+        
+        if (content.length > 3000) {
+          content = content.slice(0, 3000) + `\n\n... [TRUNCATED] File is too large. Use 'read_file' tool to read this specific file in full or in chunks.`;
+        }
         results.push(
           `================ FILE: ${filePath} ================\n${content}`,
         );
