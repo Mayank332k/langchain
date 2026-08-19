@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "bin": {
-    "kea": "./main.js"
+    "kea": "./main.js",
+    "keabot": "./services/telegram/bot.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "telegram": "node services/telegram/bot.js"
+    "telegram": "node --watch services/telegram/bot.js"
   },
   "keywords": [],
   "author": "",

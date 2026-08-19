@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const { Telegraf } = require('telegraf');
 const config = require('../../config/settings');
 const registerCommands = require('./commands');

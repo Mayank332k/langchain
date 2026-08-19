@@ -45,21 +45,43 @@ async function safeEditMessage(ctx, messageId, text, parseMode) {
 }
 
 /**
- * Convert standard Markdown to Telegram-safe Markdown V1.
+ * Convert standard Markdown to Telegram-safe HTML.
+ * HTML mode is much more stable for live streaming than Markdown V2.
  */
-function toTelegramMarkdown(text) {
+function toTelegramHTML(text) {
+  if (!text) return '';
   return text
-    .replace(/\*\*(.*?)\*\*/g, '*$1*')
-    .replace(/^#+\s+(.*)$/gm, '*$1*');
+    // 1. Escape HTML special characters
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // 2. Bold (**text**)
+    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+    // 3. Code blocks (```language\n code \n```)
+    .replace(/```[a-z0-9]*\n([\s\S]*?)```/gi, '<pre>$1</pre>')
+    // 4. Inline code (`code`)
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    // 5. Headings (# Heading)
+    .replace(/^#+\s+(.*)$/gm, '<b>$1</b>')
+    // 6. Links ([text](url))
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>')
+    // 7. Italic (*text* or _text_) - optional, but good for completeness
+    .replace(/\*(.*?)\*/g, '<i>$1</i>')
+    .replace(/_(.*?)_/g, '<i>$1</i>');
 }
 
 /**
  * Strip all markdown for plain text fallback.
  */
 function toPlainText(text) {
+  if (!text) return '';
   return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/```[a-z0-9]*\n([\s\S]*?)```/gi, '$1')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '$1 ($2)')
     .replace(/^#+\s+/gm, '');
 }
 
@@ -75,16 +97,17 @@ function buildLiveText(session) {
     if (session.currentReasoning && getAgentSettings().showThinking) {
       let reasoning = session.currentReasoning;
       if (reasoning.length > 800) reasoning = '...' + reasoning.slice(-800);
-      reasoning = reasoning.replace(/`/g, "'");
-      text += `\n\n*Thinking...*\n\`\`\`\n${reasoning}\n\`\`\``;
+      // Escape HTML for reasoning
+      reasoning = reasoning.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      text += `\n\n<i>Thinking...</i>\n<pre>${reasoning}</pre>`;
     }
-    return { text, parseMode: 'Markdown' };
+    return { text, parseMode: 'HTML' };
   }
 
   // Phase 2: Answer is streaming in — show answer only
   if (session.phase === 'answering' && session.currentAnswer) {
-    const formatted = toTelegramMarkdown(session.currentAnswer);
-    return { text: formatted, parseMode: 'Markdown' };
+    const formatted = toTelegramHTML(session.currentAnswer);
+    return { text: formatted, parseMode: 'HTML' };
   }
 
   return { text: session.currentStatus || 'Processing...', parseMode: null };
@@ -217,11 +240,11 @@ async function handleTextMessage(ctx, activeRequests) {
     if (!answer) return;
 
     // Final edit with the complete answer
-    const formatted = toTelegramMarkdown(answer);
-    const sent = await safeEditMessage(ctx, session.statusMessageId, formatted, 'Markdown');
+    const formatted = toTelegramHTML(answer);
+    const sent = await safeEditMessage(ctx, session.statusMessageId, formatted, 'HTML');
     if (!sent) {
-      const plain = toPlainText(answer);
-      await ctx.reply(plain).catch(() => {});
+      // Fallback
+      await safeEditMessage(ctx, session.statusMessageId, toPlainText(answer), null);
     }
   } catch (error) {
     destroySession(session, activeRequests);

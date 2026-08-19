@@ -12,31 +12,26 @@ function ToolCall({ status }) {
   const isThinking = statusLower.includes('thinking');
   const isSearch = statusLower.includes('search') || statusLower.includes('source') || statusLower.includes('research') || statusLower.includes('web') || statusLower.includes('reading file');
 
-  const sparkleFrames = ['✹', '✫', '✦', '✧', '✵', '❆', '✣', '✦'];
+  const sparkleFrames = [':', '→', '–', '}', '{', ')', '('];
   const shimmerColors = [
-    '#663538', '#7A4245', '#8E4F52', '#A25C5F',
-    '#B6696C', '#CC6F74', '#E08589', '#CC6F74',
-    '#B6696C', '#A25C5F', '#8E4F52', '#7A4245'
+    '#555555', '#777777', '#999999', '#BBBBBB',
+    '#DDDDDD', '#FFFFFF', '#DDDDDD', '#BBBBBB',
+    '#999999', '#777777', '#555555', '#333333'
   ];
-  const orbitFrames = ['◐', '◓', '◑', '◒'];
+  const orbitFrames = [':', '→', '–', '}', '{', ')', '('];
 
   useEffect(() => {
-    let interval;
-    if (isThinking || isSearch) {
-      interval = setInterval(() => {
-        setAnimIdx((prev) => prev + 1);
-      }, isThinking ? 140 : 120);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isThinking, isSearch]);
+    const interval = setInterval(() => {
+      setAnimIdx((prev) => prev + 1);
+    }, 140);
+    return () => clearInterval(interval);
+  }, []);
 
   if (isThinking) {
     const currentFrame = sparkleFrames[animIdx % sparkleFrames.length];
     const currentColor = shimmerColors[animIdx % shimmerColors.length];
     return (
-      <Box paddingLeft={2} marginY={1}>
+      <Box marginY={1}>
         <Text bold color={currentColor}>
           {currentFrame} {status}
         </Text>
@@ -47,7 +42,7 @@ function ToolCall({ status }) {
   if (isSearch) {
     const currentFrame = orbitFrames[animIdx % orbitFrames.length];
     return (
-      <Box paddingLeft={2} marginY={1}>
+      <Box marginY={1}>
         <Text bold color={theme.colors.primary}>
           {currentFrame} {status}
         </Text>
@@ -55,25 +50,23 @@ function ToolCall({ status }) {
     );
   }
 
-  let spinnerColor = 'cyan';
-  let spinnerType = 'dots';
-
-  if (statusLower.includes('sneak') || statusLower.includes('search')) {
-    spinnerColor = 'green';
-    spinnerType = 'dots';
+  // Fallback to custom sparkle frames with primary color instead of ink-spinner
+  let fallbackColor = theme.colors.primary;
+  
+  if (statusLower.includes('sneak')) {
+    fallbackColor = 'green';
   } else if (statusLower.includes('reading') || statusLower.includes('got')) {
-    spinnerColor = 'magenta';
-    spinnerType = 'bouncingBar';
+    fallbackColor = 'magenta';
   } else if (statusLower.includes('running')) {
-    spinnerColor = 'blue';
-    spinnerType = 'pipe';
+    fallbackColor = 'blue';
   }
 
+  const currentFrame = sparkleFrames[animIdx % sparkleFrames.length];
+
   return (
-    <Box paddingLeft={2} marginY={1}>
-      <Text bold color={spinnerColor}>
-        <Spinner type={spinnerType} />
-        {' '}{status}
+    <Box marginY={1}>
+      <Text bold color={fallbackColor}>
+        {currentFrame} {status}
       </Text>
     </Box>
   );

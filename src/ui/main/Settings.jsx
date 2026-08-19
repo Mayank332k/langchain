@@ -134,70 +134,50 @@ function Settings({ onClose }) {
   const currentModelLabel = MODEL_LEAVES[modelIndex]?.label || model;
 
   const renderMainMenu = () => (
-    <Box flexDirection="column" marginY={1}>
+    <Box flexDirection="column" paddingX={2} paddingBottom={1}>
       <Box flexDirection="row">
-        <Text color={selectedIndex === 0 ? theme.colors.primary : undefined}>
-          {selectedIndex === 0 ? '❯ ' : '  '}
-          Thinking Mode:
+        <Text color={selectedIndex === 0 ? 'yellow' : 'gray'}>
+          {selectedIndex === 0 ? ' ❯ ' : '   '}
+          Thinking Mode: {thinking ? 'ON' : 'OFF'}
         </Text>
-        <Text bold color={thinking ? 'green' : 'red'}>
-          {' '}
-          [{thinking ? 'ON' : 'OFF'}]
-        </Text>
-        <Text dimColor> (Space/Enter)</Text>
+        <Text dimColor>  - (Space/Enter)</Text>
       </Box>
 
-      <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 1 ? theme.colors.primary : undefined}>
-          {selectedIndex === 1 ? '❯ ' : '  '}
-          Show Thinking in TUI:
+      <Box flexDirection="row">
+        <Text color={selectedIndex === 1 ? 'yellow' : 'gray'}>
+          {selectedIndex === 1 ? ' ❯ ' : '   '}
+          Show Thinking in TUI: {showThinkingSetting ? 'ON' : 'OFF'}
         </Text>
-        <Text bold color={showThinkingSetting ? 'green' : 'red'}>
-          {' '}
-          [{showThinkingSetting ? 'ON' : 'OFF'}]
-        </Text>
-        <Text dimColor> (Space/Enter)</Text>
+        <Text dimColor>  - (Space/Enter)</Text>
       </Box>
 
-      <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 2 ? theme.colors.primary : undefined}>
-          {selectedIndex === 2 ? '❯ ' : '  '}
-          Web Search:
+      <Box flexDirection="row">
+        <Text color={selectedIndex === 2 ? 'yellow' : 'gray'}>
+          {selectedIndex === 2 ? ' ❯ ' : '   '}
+          Web Search: {enableWebSearch ? 'ON' : 'OFF'}
         </Text>
-        <Text bold color={enableWebSearch ? 'green' : 'red'}>
-          {' '}
-          [{enableWebSearch ? 'ON' : 'OFF'}]
-        </Text>
-        <Text dimColor> (Space/Enter)</Text>
+        <Text dimColor>  - (Space/Enter)</Text>
       </Box>
 
-      <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 3 ? theme.colors.primary : undefined}>
-          {selectedIndex === 3 ? '❯ ' : '  '}
-          Advanced Web Search (Tavily):
+      <Box flexDirection="row">
+        <Text color={selectedIndex === 3 ? 'yellow' : 'gray'}>
+          {selectedIndex === 3 ? ' ❯ ' : '   '}
+          Advanced Web Search (Tavily): {advWebSearch ? 'ON' : 'OFF'}
         </Text>
-        <Text bold color={advWebSearch ? 'green' : 'red'}>
-          {' '}
-          [{advWebSearch ? 'ON' : 'OFF'}]
-        </Text>
-        <Text dimColor> (Space/Enter)</Text>
+        <Text dimColor>  - (Space/Enter)</Text>
       </Box>
 
-      <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 4 ? theme.colors.primary : undefined}>
-          {selectedIndex === 4 ? '❯ ' : '  '}
-          Model:
+      <Box flexDirection="row">
+        <Text color={selectedIndex === 4 ? 'yellow' : 'gray'}>
+          {selectedIndex === 4 ? ' ❯ ' : '   '}
+          Model: {currentModelLabel}
         </Text>
-        <Text bold color="cyan">
-          {' '}
-          [{currentModelLabel}]
-        </Text>
-        <Text dimColor> (Open tree)</Text>
+        <Text dimColor>  - (Open tree)</Text>
       </Box>
 
-      <Box flexDirection="row" marginTop={1}>
-        <Text color={selectedIndex === 5 ? theme.colors.primary : undefined}>
-          {selectedIndex === 5 ? '❯ ' : '  '}
+      <Box flexDirection="row">
+        <Text color={selectedIndex === 5 ? 'yellow' : 'gray'}>
+          {selectedIndex === 5 ? ' ❯ ' : '   '}
           Exit and Save Settings
         </Text>
       </Box>
@@ -205,18 +185,13 @@ function Settings({ onClose }) {
   );
 
   const renderModelTree = () => (
-    <Box flexDirection="column" marginY={1}>
-      <Text bold color={theme.colors.primary}>
-        model
-      </Text>
-
+    <Box flexDirection="column" paddingX={2} paddingBottom={1}>
       {MODEL_GROUPS.map((group, groupIdx) => {
-        const groupHasActiveModel = group.models.some((m) => m.value === model);
         const isLastGroup = groupIdx === MODEL_GROUPS.length - 1;
 
         return (
-          <Box key={group.label} flexDirection="column" marginTop={1}>
-            <Text color={groupHasActiveModel ? theme.colors.primary : 'white'}>
+          <Box key={group.label} flexDirection="column">
+            <Text color="gray">
               {isLastGroup ? '└─ ' : '├─ '}{group.label}
             </Text>
 
@@ -227,18 +202,10 @@ function Settings({ onClose }) {
 
               return (
                 <Box key={leaf.value} flexDirection="row">
-                  <Text color={isSelected ? theme.colors.primary : 'dim'}>
+                  <Text color={isSelected ? 'yellow' : 'gray'}>
                     {isLastGroup ? '   ' : '│  '}└─ {isSelected ? '❯ ' : '  '}
+                    {leaf.label} {isActive ? '[active]' : ''}
                   </Text>
-                  <Text bold={isSelected || isActive} color={isSelected ? theme.colors.primary : isActive ? 'cyan' : 'white'}>
-                    {leaf.label}
-                  </Text>
-                  {isActive && (
-                    <Text dimColor>
-                      {' '}
-                      [active]
-                    </Text>
-                  )}
                 </Box>
               );
             })}
@@ -249,28 +216,18 @@ function Settings({ onClose }) {
   );
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.colors.primary} padding={1} width="100%">
-      <Box position="absolute" top={-1} left={2}>
-        <Text color={theme.colors.primary}> Settings Panel </Text>
-      </Box>
-
+    <Box flexDirection="column" width="100%">
       {activePane === 'main' ? renderMainMenu() : renderModelTree()}
 
-      <Box
-        borderStyle="single"
-        borderTop={true}
-        borderColor={theme.colors.primary}
-        borderLeft={false}
-        borderBottom={false}
-        borderRight={false}
-        paddingTop={0}
-        marginTop={1}
-      >
-        <Text dimColor>
-          {activePane === 'model'
-            ? 'Up/Down to change model. Enter to select. Esc/Left/q to go back.'
-            : 'Up/Down to move. Enter/Space to select. Esc/q to close.'}
-        </Text>
+      <Box paddingX={1} marginTop={0}>
+        <Text bold color="white">❯ </Text>
+        <Box flexGrow={1} marginLeft={1}>
+          <Text dimColor>
+            {activePane === 'model'
+              ? 'Up/Down to change model. Enter to select. Esc/Left/q to go back.'
+              : 'Up/Down to move. Enter/Space to select. Esc/q to close.'}
+          </Text>
+        </Box>
       </Box>
     </Box>
   );

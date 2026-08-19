@@ -25,7 +25,7 @@ function parseInline(text, textColor, options = {}) { const bg = options.bgGray 
       return <Text key={idx} italic={true} underline={isUnderline} color={textColor} backgroundColor={bg}>{part.slice(1, -1)}</Text>;
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      return <Text key={idx} color="black" backgroundColor={theme.colors.primary}> {part.slice(1, -1)} </Text>;
+      return <Text key={idx} color={theme.colors.user}>{part.slice(1, -1)}</Text>;
     }
     return <Text key={idx} bold={isBold} underline={isUnderline} italic={isItalic} color={textColor} backgroundColor={bg}>{part}</Text>;
   });
@@ -84,8 +84,72 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
       continue;
     }
 
+
+
     if (inCodeBlock) {
       codeBlockLines.push(line);
+      continue;
+    }
+
+    // Detect tables
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      let j = i;
+      const tableLines = [];
+      while (j < lines.length && lines[j].trim().startsWith('|') && lines[j].trim().endsWith('|')) {
+        tableLines.push(lines[j]);
+        j++;
+      }
+      
+      // Parse table
+      const parsedRows = tableLines
+        .filter(l => !l.match(/^\|?[\s-:]+\|/)) // filter out the divider row like |---|---|
+        .map(l => {
+          const cells = l.split('|').map(cell => cell.trim());
+          cells.shift(); // remove empty before first |
+          cells.pop();   // remove empty after last |
+          return cells;
+        });
+
+      if (parsedRows.length > 0) {
+        const numCols = parsedRows[0].length;
+        const colWidth = Math.floor(100 / numCols);
+
+        renderedElements.push(
+          <Box key={`table-${i}`} flexDirection="column" borderStyle="single" borderColor={theme.colors.primary} marginY={1}>
+            {parsedRows.map((row, rowIdx) => {
+              const isHeader = rowIdx === 0;
+              return (
+                <Box 
+                  key={`row-${rowIdx}`} 
+                  flexDirection="row" 
+                  borderStyle={isHeader ? "single" : undefined}
+                  borderBottom={isHeader}
+                  borderTop={false} borderLeft={false} borderRight={false}
+                  borderColor={theme.colors.primary}
+                >
+                  {row.map((cell, colIdx) => (
+                    <Box 
+                      key={`cell-${colIdx}`} 
+                      width={`${colWidth}%`} 
+                      paddingX={1}
+                      borderStyle={colIdx < row.length - 1 ? "single" : undefined}
+                      borderRight={colIdx < row.length - 1}
+                      borderTop={false} borderBottom={false} borderLeft={false}
+                      borderColor={theme.colors.primary}
+                    >
+                      <Box flexDirection="row" flexWrap="wrap">
+                        {parseInline(cell, textColor, { bold: isHeader || boldText, bgGray })}
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              );
+            })}
+          </Box>
+        );
+      }
+      
+      i = j - 1; // skip processed lines
       continue;
     }
 
@@ -98,8 +162,8 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
         const inlineElements = parseInline(text, theme.colors.primary, { bold: true, underline: level === 1 });
         if (inlineElements && inlineElements.length > 0) {
           renderedElements.push(
-            <Box key={i} marginY={1} flexDirection="row" flexWrap="wrap">
-              {inlineElements}
+            <Box key={i} marginY={1}>
+              <Text>{inlineElements}</Text>
             </Box>
           );
         }
@@ -117,8 +181,8 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
         renderedElements.push(
           <Box key={i} paddingLeft={2} flexDirection="row">
             <Text color={textColor}>• </Text>
-            <Box flexDirection="row" flexWrap="wrap">
-              {inlineElements}
+            <Box flexShrink={1} flexGrow={1}>
+              <Text>{inlineElements}</Text>
             </Box>
           </Box>
         );
@@ -131,8 +195,8 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
       const inlineElements = parseInline(line, textColor, { bold: boldText, bgGray });
       if (inlineElements && inlineElements.length > 0) {
         renderedElements.push(
-          <Box key={i} paddingLeft={0} marginY={0} flexDirection="row" flexWrap="wrap">
-            {inlineElements}
+          <Box key={i} paddingLeft={0} marginY={0}>
+            <Text>{inlineElements}</Text>
           </Box>
         );
       }
@@ -170,4 +234,4 @@ function MarkdownRenderer({ content, textColor, boldText = false, bgGray = false
   return <Box flexDirection="column" width="100%">{renderedElements}</Box>;
 }
 
-module.exports = MarkdownRenderer;
+module.exports = React.memo(MarkdownRenderer);

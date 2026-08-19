@@ -11,7 +11,7 @@ const config = require("../config/settings");
  */
 const searchTool = new DynamicStructuredTool({
   name: "web_search",
-  description: "Use this tool to search the internet for current events, latest news, real-time info. VERY IMPORTANT: You must write extremely precise, keyword-heavy search queries (e.g., 'React 19 release date features' instead of 'What are the new features in React?'). Do not use conversational filler in your queries.",
+  description: "Use this tool to search the internet for current events, latest news, real-time info. VERY IMPORTANT: You must write extremely precise, keyword-heavy search queries. After answering from results, ALWAYS end with a 'Sources:' list of the URLs you used as markdown links.",
   schema: z.object({
     query: z.string().describe("The search query string to look up on the web.")
   }),

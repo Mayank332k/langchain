@@ -117,7 +117,7 @@ async function processUserQueryStream(input, onEvent, signal) {
     // LangGraph streamEvents API v2 se real-time events stream karte hain
     const eventStream = agent.streamEvents(
       { messages: messages },
-      { version: "v2", recursionLimit: 30, signal: signal }
+      { version: "v2", recursionLimit: 100, signal: signal }
     );
 
     let fullAnswer = "";
@@ -139,69 +139,22 @@ async function processUserQueryStream(input, onEvent, signal) {
           "Formulating thoughts..."
         ], 2000);
       }
-      // AI ne Web Search tool invoke kiya
+      // AI ne tool invoke kiya
       else if (event.event === "on_tool_start") {
         const toolName = event.name;
         const inputArgs = event.data?.input || {};
-
-        if (toolName === "web_search") {
-          clearStatusCycle();
-          onEvent({ type: "status", message: `Searching web for "${inputArgs.query || "web"}"...` });
-        } else if (toolName === "read_file") {
-          const fp = inputArgs.filePath || "file";
-          clearStatusCycle();
-          onEvent({ type: "status", message: `Reading ${fp}...` });
-        } else if (toolName === "read_multiple_files") {
-          clearStatusCycle();
-          const count = inputArgs.filePaths?.length || 0;
-          onEvent({ type: "status", message: `Reading ${count} files...` });
-        } else if (toolName === "list_directory") {
-          const dp = inputArgs.dirPath || "root directory";
-          startStatusCycle(onEvent, [
-            `Listing ${dp}...`,
-            `Scanning files in ${dp}...`,
-            `Filtering system folders in ${dp}...`
-          ], 1000);
-        } else if (toolName === "search_files") {
-          const q = inputArgs.query || "files";
-          startStatusCycle(onEvent, [
-            `Searching codebase for "${q}"...`,
-            `Scanning file system for "${q}"...`,
-            `Filtering text matches for "${q}"...`
-          ], 1000);
-        } else {
-          startStatusCycle(onEvent, [
-            `Running ${toolName}...`,
-            `Processing parameters...`,
-            `Executing nodes...`
-          ], 1500);
-        }
+        clearStatusCycle(onEvent);
+        onEvent({ type: "tool_call", name: toolName, args: inputArgs });
       }
-      // Web search poora ho gaya
+      // Tool execution complete
       else if (event.event === "on_tool_end") {
         const toolName = event.name;
-        if (toolName === "read_file") {
-          startStatusCycle(onEvent, [
-            "File read completed...",
-            "Synthesizing file insights..."
-          ], 1000);
-        } else if (toolName === "list_directory") {
-          startStatusCycle(onEvent, [
-            "Directory list retrieved...",
-            "Formatting files layout..."
-          ], 1000);
-        } else if (toolName === "search_files") {
-          startStatusCycle(onEvent, [
-            "Search completed...",
-            "Analyzing match results..."
-          ], 1000);
-        } else {
-          startStatusCycle(onEvent, [
-            "Got tool data, reading...",
-            "Digesting details...",
-            "Synthesizing structured response..."
-          ], 1500);
+        let output = event.data?.output;
+        if (output && typeof output === 'object') {
+          output = output.content || JSON.stringify(output);
         }
+        clearStatusCycle(onEvent);
+        onEvent({ type: "tool_result", name: toolName, output });
       }
       // Token-by-token final answer streaming
       else if (event.event === "on_chat_model_stream") {
@@ -228,6 +181,16 @@ async function processUserQueryStream(input, onEvent, signal) {
               onEvent({ type: "token", token: content });
             }
           }
+
+          // If the model is streaming a tool call, show a status so the UI doesn't look frozen
+          if (chunk.tool_call_chunks && chunk.tool_call_chunks.length > 0) {
+            const tc = chunk.tool_call_chunks[0];
+            if (tc.name) {
+              onEvent({ type: "status", message: `Preparing to run ${tc.name}...` });
+            } else if (!activeStatusInterval && !answerStarted) {
+              onEvent({ type: "status", message: `Preparing tool arguments...` });
+            }
+          }
         }
       }
     }
@@ -236,8 +199,11 @@ async function processUserQueryStream(input, onEvent, signal) {
 
     // History update karte hain
     chatHistory.push(inputMessage);
+    memoryService.logChatMessage('user', input);
+
     if (fullAnswer) {
       chatHistory.push(new AIMessage(fullAnswer));
+      memoryService.logChatMessage('assistant', fullAnswer);
     }
     
     // Check and trigger rolling memory if limit exceeded

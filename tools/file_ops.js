@@ -2,6 +2,7 @@ const { DynamicStructuredTool } = require("@langchain/core/tools");
 const { z } = require("zod");
 const fs = require("fs/promises");
 const path = require("path");
+const permissionBus = require("../src/utils/permissionBus");
 
 /**
  * Tool to read the contents of a local file in the workspace.
@@ -9,7 +10,7 @@ const path = require("path");
 const readFileTool = new DynamicStructuredTool({
   name: "read_file",
   description:
-    "Use this tool to read the text contents of a local file anywhere on the system. You can supply an absolute path or a relative path.",
+    "Reads a file from the local filesystem. You can supply an absolute path or a relative path.\n- Do NOT re-read a file you just edited to verify — Edit/Write tools will error if the change fails.\n- Reading a directory, a missing file, or an empty file returns an error rather than content.",
   schema: z.object({
     filePath: z
       .string()
@@ -207,9 +208,47 @@ const searchFilesTool = new DynamicStructuredTool({
   },
 });
 
+/**
+ * Tool to write content to a local file.
+ */
+const writeFileTool = new DynamicStructuredTool({
+  name: "write_file",
+  description:
+    "Write content to a file.\n- Creates the file if it doesn't exist.\n- Overwrites the file if it does exist. You can supply an absolute path or a relative path.",
+  schema: z.object({
+    filePath: z.string().describe("The absolute or relative path of the file to write."),
+    content: z.string().describe("The text content to write into the file.")
+  }),
+  func: async ({ filePath, content }) => {
+    try {
+      if (!filePath) {
+        return "Error: No file path provided.";
+      }
+
+      // Request permission before writing
+      const approved = await permissionBus.requestPermission("write_file", { filePath });
+      if (!approved) {
+        return `Error: User denied permission to write to file "${filePath}".`;
+      }
+
+      const absolutePath = path.resolve(process.cwd(), filePath);
+      
+      // Ensure directory exists
+      const dir = path.dirname(absolutePath);
+      await fs.mkdir(dir, { recursive: true });
+      
+      await fs.writeFile(absolutePath, content, "utf-8");
+      return `Successfully wrote to file at ${filePath}`;
+    } catch (err) {
+      return `Error writing file: ${err.message}`;
+    }
+  },
+});
+
 module.exports = {
   readFileTool,
   readMultipleFilesTool,
   listDirTool,
   searchFilesTool,
+  writeFileTool,
 };

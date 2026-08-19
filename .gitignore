@@ -36,3 +36,14 @@ context.md
 test_search.js
 ddg_debug.html
 tempCodeRunnerFile.js
+
+# Application Data & Logs
+memory.json
+chat_log.json
+chat_log.md
+
+# Ignored secrets/dumps
+sauce/
+
+# Kea Memory System (Personal/Local state)
+.kea/
